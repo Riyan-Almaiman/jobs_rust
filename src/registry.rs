@@ -33,11 +33,11 @@ type BoxedHandler = Arc<
 
 /// A background job definition
 ///
-/// Create jobs using `server.create_background_job()`.
+/// Create jobs using `server.register_background_job()`.
 ///
 /// # Example
 /// ```ignore
-/// let send_email = server.create_background_job("send_email", |args: SendEmailArgs| async move {
+/// let send_email = server.register_background_job("send_email", |args: SendEmailArgs| async move {
 ///     println!("Sending email to {}", args.to);
 ///     Ok(())
 /// }, 3, "default")

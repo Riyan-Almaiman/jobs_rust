@@ -29,13 +29,13 @@ impl JobQueue {
     /// Create a new job queue with the given connection string.
     ///
     /// Workers are not started until you call `start()`.
-    /// Register your jobs with `create_background_job()` before calling `start()`.
+    /// Register your jobs with `register_background_job()` before calling `start()`.
     ///
     /// # Example
     /// ```ignore
     /// let mut queue = JobQueue::new("sqlite://jobs.db").await?;
     ///
-    /// let email_job = queue.create_background_job("send_email", send_email, 3, "default");
+    /// let email_job = queue.register_background_job("send_email", send_email, 3, "default");
     ///
     /// queue.start(2);  // Start 2 workers
     /// ```
@@ -57,7 +57,7 @@ impl JobQueue {
 
     /// Start workers for the default queue.
     ///
-    /// Call this after registering all your jobs with `create_background_job()`.
+    /// Call this after registering all your jobs with `register_background_job()`.
     pub fn start(&mut self, worker_count: usize) {
         self.create_queue("default", worker_count);
     }
@@ -80,10 +80,10 @@ impl JobQueue {
     ///
     /// # Example
     /// ```ignore
-    /// let send_email = queue.create_background_job("send_email", send_email_handler, 3, "default").await;
-    /// let critical_job = queue.create_background_job("critical", handler, 5, "critical").await;
+    /// let send_email = queue.register_background_job("send_email", send_email_handler, 3, "default").await;
+    /// let critical_job = queue.register_background_job("critical", handler, 5, "critical").await;
     /// ```
-    pub async fn create_background_job<T, F, Fut>(
+    pub async fn register_background_job<T, F, Fut>(
         &self,
         name: &'static str,
         handler: F,

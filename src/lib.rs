@@ -34,7 +34,7 @@
 //!     let mut queue = JobQueue::new("sqlite://jobs.db").await?;
 //!
 //!     // Register jobs first
-//!     let send_email_job = queue.create_background_job("send_email", send_email, 3, "default").await;
+//!     let send_email_job = queue.register_background_job("send_email", send_email, 3, "default").await;
 //!
 //!     // Start workers
 //!     queue.start(2);
