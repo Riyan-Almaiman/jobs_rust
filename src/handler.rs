@@ -33,7 +33,13 @@ impl HandlerRegistry {
     pub fn new() -> Self {
         Self { handlers: RwLock::new(HashMap::new()) }
     }
-
+fn join_error_to_job_error(e: JoinError) -> JobError {
+            if e.is_panic() {
+                JobError::Execution("Handler panicked".to_string())
+            } else {
+                JobError::Execution("Handler cancelled".to_string())
+            }
+        }
     pub fn register(&self, name: &str, handler: BoxedHandler, timeout: Option<Duration>) {
         let mut handlers = self.handlers.write().unwrap_or_else(|e| e.into_inner());
         handlers.insert(name.to_string(), (handler, timeout));
@@ -51,25 +57,17 @@ impl HandlerRegistry {
         let future = handler(job.payload.clone());
         let mut handle = tokio::spawn(async move { future.await });
 
-        let join_to_error = |e: JoinError| {
-            if e.is_panic() {
-                JobError::Execution("Handler panicked".to_string())
-            } else {
-                JobError::Execution("Handler cancelled".to_string())
-            }
-        };
-
         match timeout {
             Some(duration) => {
                 tokio::select! {
-                    res = &mut handle => res.map_err(join_to_error)?,
+                    res = &mut handle => res.map_err(Self::join_error_to_job_error)?,
                     _ = tokio::time::sleep(duration) => {
                         handle.abort();
                         Err(JobError::Timeout(duration))
                     }
                 }
             }
-            None => handle.await.map_err(join_to_error)?,
+            None => handle.await.map_err(Self::join_error_to_job_error)?,
         }
     }
 }
