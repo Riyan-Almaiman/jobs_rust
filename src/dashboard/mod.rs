@@ -1,4 +1,4 @@
-pub mod templates;
+mod templates;
 
 use std::sync::Arc;
 
@@ -9,16 +9,14 @@ use axum::{
     Router,
 };
 
-use crate::JobId;
-use crate::Storage;
+use crate::job::{JobId, JobState};
+use crate::storage::Storage;
 
-/// Shared state for the dashboard
 #[derive(Clone)]
-pub struct DashboardState {
-    pub storage: Arc<dyn Storage>,
+struct DashboardState {
+    storage: Arc<dyn Storage>,
 }
 
-/// Create the dashboard router
 pub fn router(storage: Arc<dyn Storage>) -> Router {
     let state = DashboardState { storage };
 
@@ -35,87 +33,46 @@ pub fn router(storage: Arc<dyn Storage>) -> Router {
         .with_state(state)
 }
 
-/// Dashboard overview with stats
 async fn overview(State(state): State<DashboardState>) -> Html<String> {
     let stats = state.storage.get_stats().await.unwrap_or_default();
     Html(templates::render_overview(&stats))
 }
 
-/// List enqueued jobs
 async fn jobs_enqueued(State(state): State<DashboardState>) -> Html<String> {
-    let jobs = state
-        .storage
-        .get_jobs_by_state("enqueued", 100)
-        .await
-        .unwrap_or_default();
+    let jobs = state.storage.get_jobs_by_state("enqueued", 100).await.unwrap_or_default();
     Html(templates::render_jobs("Enqueued", &jobs, false))
 }
 
-/// List processing jobs
 async fn jobs_processing(State(state): State<DashboardState>) -> Html<String> {
-    let jobs = state
-        .storage
-        .get_jobs_by_state("processing", 100)
-        .await
-        .unwrap_or_default();
+    let jobs = state.storage.get_jobs_by_state("processing", 100).await.unwrap_or_default();
     Html(templates::render_jobs("Processing", &jobs, false))
 }
 
-/// List succeeded jobs
 async fn jobs_succeeded(State(state): State<DashboardState>) -> Html<String> {
-    let jobs = state
-        .storage
-        .get_jobs_by_state("succeeded", 100)
-        .await
-        .unwrap_or_default();
+    let jobs = state.storage.get_jobs_by_state("succeeded", 100).await.unwrap_or_default();
     Html(templates::render_jobs("Succeeded", &jobs, false))
 }
 
-/// List failed jobs
 async fn jobs_failed(State(state): State<DashboardState>) -> Html<String> {
-    let jobs = state
-        .storage
-        .get_jobs_by_state("failed", 100)
-        .await
-        .unwrap_or_default();
+    let jobs = state.storage.get_jobs_by_state("failed", 100).await.unwrap_or_default();
     Html(templates::render_jobs("Failed", &jobs, true))
 }
 
-/// List scheduled jobs
 async fn jobs_scheduled(State(state): State<DashboardState>) -> Html<String> {
-    let jobs = state
-        .storage
-        .get_jobs_by_state("scheduled", 100)
-        .await
-        .unwrap_or_default();
+    let jobs = state.storage.get_jobs_by_state("scheduled", 100).await.unwrap_or_default();
     Html(templates::render_jobs("Scheduled", &jobs, false))
 }
 
-/// Retry a failed job
-async fn retry_job(
-    State(state): State<DashboardState>,
-    Path(id): Path<String>,
-    
-) -> Redirect {
-    let job_id = JobId(id);
-    let _ = state
-        .storage
-        .update_state(&job_id, crate::JobState::Enqueued)
-        .await;
+async fn retry_job(State(state): State<DashboardState>, Path(id): Path<String>) -> Redirect {
+    let _ = state.storage.update_state(&JobId(id), JobState::Enqueued).await;
     Redirect::to("/jobs/failed")
 }
 
-/// Delete a job
-async fn delete_job(
-    State(state): State<DashboardState>,
-    Path(id): Path<String>,
-) -> Redirect {
-    let job_id = JobId(id);
-    let _ = state.storage.delete_job(&job_id).await;
+async fn delete_job(State(state): State<DashboardState>, Path(id): Path<String>) -> Redirect {
+    let _ = state.storage.delete_job(&JobId(id)).await;
     Redirect::to("/")
 }
 
-/// List recurring jobs
 async fn recurring_jobs(State(state): State<DashboardState>) -> Html<String> {
     let jobs = state.storage.get_all_recurring().await.unwrap_or_default();
     Html(templates::render_recurring(&jobs))
